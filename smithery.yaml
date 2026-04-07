@@ -9,7 +9,7 @@ startCommand:
       PAYSKILL_SIGNER_KEY:
         type: string
         title: "Keystore Password (or raw key for dev)"
-        description: "Not needed if using OS keychain (run 'pay init' first). If ~/.pay/keys/default.enc exists, this is the decryption password. If a 64-char hex string, used as a raw private key (dev/testing only)."
+        description: "EVM private key (64 hex chars, with or without 0x prefix). If ~/.pay/keys/default.enc exists, this is used as the decryption password instead."
         x-secret: true
       PAY_NETWORK:
         type: string
@@ -17,7 +17,8 @@ startCommand:
         description: "Target network. Use 'mainnet' for Base mainnet or 'testnet' for Base Sepolia."
         default: "mainnet"
         enum: ["mainnet", "testnet"]
-    required: []
+    required:
+      - PAYSKILL_SIGNER_KEY
   commandFunction: |-
     (config) => ({
       command: "npx",
