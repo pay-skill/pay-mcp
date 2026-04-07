@@ -1,0 +1,38 @@
+{
+  "name": "@pay-skill/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Pay — USDC payments for AI agents on Base",
+  "type": "module",
+  "bin": {
+    "pay-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "viem": "^2.0.0",
+    "zod": "^3.0.0",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "peerDependencies": {
+    "keytar": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "keytar": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}

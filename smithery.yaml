@@ -1,0 +1,33 @@
+# Smithery registry configuration for @pay-skill/mcp
+# https://smithery.ai/server/@pay-skill/mcp
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      PAYSKILL_SIGNER_KEY:
+        type: string
+        title: "Wallet Private Key or Keystore Password"
+        description: "EVM private key (64 hex chars, with or without 0x prefix) for the agent wallet. If an encrypted keystore exists at ~/.pay/keys/default.enc, this is used as the decryption password instead."
+        x-secret: true
+      PAY_NETWORK:
+        type: string
+        title: "Network"
+        description: "Target network. Use 'mainnet' for Base mainnet or 'testnet' for Base Sepolia."
+        default: "mainnet"
+        enum: ["mainnet", "testnet"]
+    required:
+      - PAYSKILL_SIGNER_KEY
+  commandFunction: |-
+    (config) => ({
+      command: "npx",
+      args: ["-y", "@pay-skill/mcp"],
+      env: {
+        PAYSKILL_SIGNER_KEY: config.PAYSKILL_SIGNER_KEY,
+        PAY_NETWORK: config.PAY_NETWORK || "mainnet",
+      },
+    })
+  exampleConfig:
+    PAYSKILL_SIGNER_KEY: "0x0000000000000000000000000000000000000000000000000000000000000001"
+    PAY_NETWORK: "testnet"
