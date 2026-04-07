@@ -15,11 +15,14 @@ export function createDiscoverTool(api: PayAPI): Tool {
     definition: {
       name: "pay_discover",
       description:
-        "Search for paid API services that accept USDC payments via x402. " +
-        "Returns services with their base URL, pricing, and settlement mode. " +
-        "Use the base_url from results with pay_request to call the service.\n\n" +
-        "Examples: 'weather API', 'image generation', 'translation'\n" +
-        "Sort by 'volume' (most popular), 'newest', or 'name'.",
+        "Search for paid API services that accept USDC payments.\n\n" +
+        "WHEN TO USE: You need a service but don't have a URL. This is the default " +
+        "starting point when the task is 'I need X'. After finding a service, use " +
+        "pay_request with its base_url + endpoint path.\n\n" +
+        "Returns: service name, base_url, pricing, settlement mode (direct/tab).\n" +
+        "Sort by 'volume' (most popular, default), 'newest', or 'name'.\n\n" +
+        "If discover returns nothing, the service may still exist behind pay-gate but " +
+        "not be discoverable. Try pay_request on a known URL directly.",
       inputSchema: zodToMcpSchema(DiscoverArgs),
     },
     handler: async (args) => {

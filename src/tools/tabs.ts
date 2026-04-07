@@ -28,12 +28,15 @@ function createTabOpenTool(api: PayAPI, privateKey: Hex): Tool {
     definition: {
       name: "pay_tab_open",
       description:
-        "Open a pre-funded tab with a provider. Minimum $5.00 (5000000 micro-USDC). " +
-        "The agent locks USDC; the provider charges incrementally against it.\n\n" +
-        "SIZING ADVICE: For API usage, $50 is a good starting point. The activation " +
-        "fee is max($0.10, 1% of amount) — non-refundable. Unused balance is returned " +
-        "when the tab is closed. Tabs auto-close after 30 days of inactivity.\n\n" +
-        "max_charge limits what the provider can charge per call (contract-enforced).",
+        "Open a pre-funded metered tab with a provider. Use tabs for repeated API calls " +
+        "or ongoing service access — more gas-efficient than per-call direct payments.\n\n" +
+        "WHEN TO USE: Multiple calls to the same provider, sub-$1 per-call pricing, " +
+        "or when pay_request auto-opens one (tab settlement mode). For one-time payments, " +
+        "use pay_send instead.\n\n" +
+        "SIZING: $50 recommended for cost efficiency (activation fee is 1% = $0.50). " +
+        "Minimum $5.00 (activation fee = $0.10). Unused balance refunded on close.\n\n" +
+        "max_charge: maximum the provider can charge per single call (contract-enforced). " +
+        "Tabs auto-close after 30 days of no charges.",
       inputSchema: zodToMcpSchema(TabOpenArgs),
     },
     handler: async (args) => {
@@ -79,16 +82,29 @@ function createTabCloseTool(api: PayAPI): Tool {
     definition: {
       name: "pay_tab_close",
       description:
-        "Close a tab. Either the agent or provider can close unilaterally. " +
-        "Distribution: provider gets charged amount minus 1% fee, agent gets unused balance.",
+        "Close a tab and settle funds. Either party can close unilaterally.\n\n" +
+        "DISTRIBUTION: Provider receives 99% of total charged. Fee wallet gets 1%. " +
+        "Agent gets all remaining (unspent) balance back. Pending charges are flushed first.",
       inputSchema: zodToMcpSchema(TabCloseArgs),
     },
     handler: async (args) => {
       const { tab_id } = args as { tab_id: string };
       const tab = await api.post<Tab>(`/tabs/${tab_id}/close`, {});
+
+      // Distribution breakdown
+      const totalCharged = Number(tab.total_charged);
+      const providerGets = (totalCharged * 0.99 / 1_000_000).toFixed(2);
+      const feeAmount = (totalCharged * 0.01 / 1_000_000).toFixed(2);
+
       return {
         ...tab,
-        summary: `Closed tab ${tab_id}. Status: ${tab.status}.`,
+        summary: `Closed tab ${tab_id}.`,
+        distribution: {
+          total_charged: `$${(totalCharged / 1_000_000).toFixed(2)}`,
+          provider_receives: `$${providerGets} (99%)`,
+          fee: `$${feeAmount} (1%)`,
+          charges: tab.charge_count,
+        },
       };
     },
   };
@@ -116,8 +132,10 @@ function createTabTopupTool(api: PayAPI, privateKey: Hex): Tool {
     definition: {
       name: "pay_tab_topup",
       description:
-        "Add more USDC to an open tab. Only the agent (tab opener) can top up. " +
-        "Uses EIP-2612 permit for gas-free approval.",
+        "Add more USDC to an open tab. Only the agent (tab opener) can top up.\n\n" +
+        "WHEN TO TOP UP: When effective_balance drops below ~20% of original amount " +
+        "or below 10x the per-call charge. Top-up avoids closing and re-opening " +
+        "(which would cost another activation fee).",
       inputSchema: zodToMcpSchema(TabTopupArgs),
     },
     handler: async (args) => {
@@ -150,31 +168,49 @@ function createTabListTool(api: PayAPI): Tool {
     definition: {
       name: "pay_tab_list",
       description:
-        "List all your tabs (open and recently closed). " +
-        "Check for idle tabs (open but no recent charges) — consider closing them " +
-        "to free locked funds. Pending charges show buffered but unsettled amounts.",
+        "List all tabs. Use to review tab health and optimize fund usage.\n\n" +
+        "FLAGS: Idle tabs (open, no charges in 7+ days) are marked — consider closing " +
+        "to free locked funds. Low-balance tabs are flagged for top-up. " +
+        "Pending charges show amounts buffered but not yet settled on-chain.",
       inputSchema: zodToMcpSchema(TabListArgs),
     },
     handler: async () => {
       const tabs = await api.get<Tab[]>("/tabs");
-
-      // Flag idle tabs (open, no charges in a while)
       const now = Date.now();
-      const idleThresholdMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+      const IDLE_DAYS = 7;
+      const idleMs = IDLE_DAYS * 24 * 60 * 60 * 1000;
+
       const flagged = tabs.map((tab) => {
-        const isIdle =
-          tab.status === "open" &&
-          tab.charge_count === 0 &&
-          now - new Date(tab.created_at).getTime() > idleThresholdMs;
-        return { ...tab, idle: isIdle };
+        if (tab.status !== "open") return { ...tab, idle: false, low_balance: false };
+
+        // Idle: open with zero charges and created > 7 days ago
+        const age = now - new Date(tab.created_at).getTime();
+        const isIdle = tab.charge_count === 0 && age > idleMs;
+
+        // Low balance: effective balance below 10% of max_charge (less than ~10 calls)
+        const effective = Number(tab.effective_balance);
+        const maxCharge = Number(tab.max_charge_per_call);
+        const isLow = maxCharge > 0 && effective < maxCharge * 10 && effective > 0;
+
+        return { ...tab, idle: isIdle, low_balance: isLow };
       });
 
-      const openCount = tabs.filter((t) => t.status === "open").length;
-      const idleCount = flagged.filter((t) => t.idle).length;
+      const openTabs = flagged.filter((t) => t.status === "open");
+      const idleCount = openTabs.filter((t) => t.idle).length;
+      const lowCount = openTabs.filter((t) => t.low_balance).length;
+      const totalLocked = openTabs.reduce(
+        (sum, t) => sum + Number(t.balance_remaining),
+        0,
+      );
+
+      const parts = [`${openTabs.length} open tab(s)`];
+      if (totalLocked > 0) parts.push(`$${(totalLocked / 1_000_000).toFixed(2)} locked`);
+      if (idleCount > 0) parts.push(`${idleCount} idle (close to free funds)`);
+      if (lowCount > 0) parts.push(`${lowCount} low balance (consider top-up)`);
 
       return {
         tabs: flagged,
-        summary: `${openCount} open tab(s)${idleCount > 0 ? `, ${idleCount} idle (consider closing)` : ""}.`,
+        summary: parts.join(", ") + ".",
       };
     },
   };

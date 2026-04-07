@@ -32,11 +32,10 @@ export function createWebhookTools(api: PayAPI): Tool[] {
       definition: {
         name: "pay_webhook_register",
         description:
-          "Register a webhook to receive payment events. " +
-          "Events are delivered via HTTPS POST with HMAC signature.\n\n" +
-          "Available events: " + VALID_EVENTS.join(", ") + "\n\n" +
-          "If no events specified, all events are delivered. " +
-          "The returned secret is used to verify webhook signatures.",
+          "Register a webhook to receive real-time payment event notifications.\n\n" +
+          "Events: " + VALID_EVENTS.join(", ") + "\n\n" +
+          "If no events specified, all are delivered. Delivery: HTTPS POST with " +
+          "HMAC-SHA256 signature for verification. At-least-once with retries.",
         inputSchema: zodToMcpSchema(WebhookRegisterArgs),
       },
       handler: async (args) => {

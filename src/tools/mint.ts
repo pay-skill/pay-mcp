@@ -15,10 +15,9 @@ export function createMintTool(api: PayAPI): Tool {
     definition: {
       name: "pay_mint",
       description:
-        "Mint testnet USDC for testing. Only works on Base Sepolia (testnet). " +
-        "Amount is in whole dollars (e.g. 100 = $100.00 USDC). " +
-        "Use this to fund your wallet for development.\n\n" +
-        "This is free test money with no real value.",
+        "Mint testnet USDC (Base Sepolia only). Free test tokens with no real value.\n\n" +
+        "WHEN TO USE: Testing payments on testnet. Amount is in whole dollars " +
+        "(e.g. 100 = $100.00 USDC). Will fail on mainnet — use pay_fund for real USDC.",
       inputSchema: zodToMcpSchema(MintArgs),
     },
     handler: async (args) => {
