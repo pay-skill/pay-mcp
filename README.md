@@ -6,6 +6,10 @@ Gives any MCP-compatible client (Claude Desktop, Cursor, VS Code, custom framewo
 
 ## Setup
 
+### Prerequisites
+
+Run `pay init` to create a wallet. The MCP server shares the same wallet and key storage as the CLI — no separate key management needed.
+
 ### Claude Desktop
 
 Add to `claude_desktop_config.json`:
@@ -15,10 +19,22 @@ Add to `claude_desktop_config.json`:
   "mcpServers": {
     "pay": {
       "command": "npx",
+      "args": ["-y", "@pay-skill/mcp"]
+    }
+  }
+}
+```
+
+If your wallet uses an encrypted keystore (`~/.pay/keys/default.enc`), set the password:
+
+```json
+{
+  "mcpServers": {
+    "pay": {
+      "command": "npx",
       "args": ["-y", "@pay-skill/mcp"],
       "env": {
-        "PAYSKILL_SIGNER_KEY": "your-private-key-hex",
-        "PAY_NETWORK": "mainnet"
+        "PAYSKILL_SIGNER_KEY": "your-keystore-password"
       }
     }
   }
@@ -34,10 +50,7 @@ Add to `.vscode/mcp.json`:
   "servers": {
     "pay": {
       "command": "npx",
-      "args": ["-y", "@pay-skill/mcp"],
-      "env": {
-        "PAYSKILL_SIGNER_KEY": "your-private-key-hex"
-      }
+      "args": ["-y", "@pay-skill/mcp"]
     }
   }
 }
@@ -49,29 +62,29 @@ Add to `.vscode/mcp.json`:
 claude mcp add pay -- npx -y @pay-skill/mcp
 ```
 
-Set env var: `export PAYSKILL_SIGNER_KEY=your-private-key-hex`
-
 ## Configuration
 
 | Env Var | Required | Default | Description |
 |---------|----------|---------|-------------|
-| `PAYSKILL_SIGNER_KEY` | Yes | — | Private key (64 hex chars, with or without `0x`). If a `.enc` keystore exists, this is the decryption password. |
+| `PAYSKILL_SIGNER_KEY` | Depends | — | Keystore password (if `.enc` exists) or raw hex key (dev/testing only). Not needed if using OS keychain. |
 | `PAY_NETWORK` | No | `mainnet` | `mainnet` (Base) or `testnet` (Base Sepolia) |
 
-### Key Sources (checked in order)
+### Key Resolution (checked in order)
 
-1. `PAYSKILL_SIGNER_KEY` env var as raw hex key
-2. OS keychain via `keytar` (reads `~/.pay/keys/default.meta`)
-3. Encrypted keystore at `~/.pay/keys/default.enc` (uses `PAYSKILL_SIGNER_KEY` as password)
+The MCP server resolves the wallet key using the same chain as the `pay` CLI:
 
-The key format matches the `pay` CLI — if you've run `pay init`, the MCP server can use the same wallet.
+1. **OS keychain** (recommended) — If `~/.pay/keys/default.meta` exists with `storage: "keychain"`, the key is loaded from the OS credential store (Windows Hello, macOS Keychain, Linux Secret Service) via `keytar`. No env var needed.
+2. **Encrypted keystore** — If `~/.pay/keys/default.enc` exists, `PAYSKILL_SIGNER_KEY` is used as the decryption password (scrypt + AES-256-GCM).
+3. **Raw hex key** (dev only) — If `PAYSKILL_SIGNER_KEY` is a 64-char hex string, it's used directly. Only for testing.
+
+If you've already run `pay init`, the MCP server picks up the same wallet automatically.
 
 ## Diagnostic Check
 
 Verify everything is configured correctly:
 
 ```bash
-PAYSKILL_SIGNER_KEY=0x... npx @pay-skill/mcp --check
+npx @pay-skill/mcp --check
 ```
 
 Output:
@@ -80,7 +93,7 @@ pay-mcp diagnostic check
   network: Base (chain 8453)
   api:     https://pay-skill.com/api/v1
   wallet:  0x1234...
-  key:     env
+  key:     keychain
   server:  OK (router: 0xABCD...)
   auth:    OK (balance: $50.00)
 
