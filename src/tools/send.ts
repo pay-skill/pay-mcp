@@ -23,9 +23,12 @@ export function createSendTool(api: PayAPI, privateKey: Hex): Tool {
     definition: {
       name: "pay_send",
       description:
-        "Send a direct USDC payment. Minimum $1.00 (1000000 micro-USDC). " +
-        "Provider pays 1% processing fee. Amount is in micro-USDC (6 decimals): " +
-        "$1.00 = 1000000, $10.00 = 10000000.\n\n" +
+        "Send a one-shot USDC payment to an address. Use this for single transfers, " +
+        "A2A task payments, or any one-time payment above $1.00.\n\n" +
+        "WHEN TO USE: Sending money to a known address. For paid APIs, use pay_request instead " +
+        "(it handles 402 detection and payment automatically).\n\n" +
+        "Amount is in micro-USDC (6 decimals): $1.00 = 1000000, $10.00 = 10000000.\n" +
+        "Minimum: $1.00. Fee: 1% (paid by recipient, deducted from payout).\n\n" +
         "CONFIRMATION THRESHOLDS:\n" +
         "- Under $10: proceed automatically\n" +
         "- $10-$100: explain the payment in your plan before executing\n" +
@@ -56,9 +59,16 @@ export function createSendTool(api: PayAPI, privateKey: Hex): Tool {
       });
 
       const usdAmount = (amount / 1_000_000).toFixed(2);
+      const feeAmount = (amount * 0.01 / 1_000_000).toFixed(2);
+      const recipientGets = (amount * 0.99 / 1_000_000).toFixed(2);
       return {
         ...result,
-        summary: `Sent $${usdAmount} USDC to ${to}. Transaction: ${result.tx_hash}`,
+        summary: `Sent $${usdAmount} to ${to}. Tx: ${result.tx_hash}`,
+        fee_breakdown: {
+          sent: `$${usdAmount}`,
+          fee: `$${feeAmount} (1%, paid by recipient)`,
+          recipient_receives: `$${recipientGets}`,
+        },
       };
     },
   };

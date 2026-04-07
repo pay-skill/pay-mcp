@@ -24,6 +24,7 @@ import type { Tab } from "../types.js";
 const TAB_MIN = 5_000_000; // $5.00
 const TAB_MULTIPLIER = 10;
 const FACILITATOR_HOSTS = ["pay-skill.com", "testnet.pay-skill.com"];
+const PRICE_WARN_THRESHOLD = 5_000_000; // $5.00 — flag prices above this
 
 interface PaymentRequirements {
   settlement: string;
@@ -38,14 +39,17 @@ export function createRequestTool(api: PayAPI, privateKey: Hex): Tool {
     definition: {
       name: "pay_request",
       description:
-        "Make an HTTP request. If the endpoint returns 402 (Payment Required), " +
-        "payment is handled automatically via x402 protocol.\n\n" +
-        "SETTLEMENT MODES:\n" +
-        "- 'direct': one-shot USDC transfer (EIP-3009, no server round-trip)\n" +
-        "- 'tab': charges against a pre-funded tab (auto-opened if needed)\n\n" +
-        "PRICE CONTEXT: Typical API calls cost $0.001-$1.00 per request. " +
-        "If a service charges significantly more, consider whether the value justifies the cost.\n\n" +
-        "Only pays facilitators at pay-skill.com. Rejects unknown facilitators.",
+        "Make an HTTP request to a URL. If it returns 402 (Payment Required), " +
+        "payment is handled automatically via x402.\n\n" +
+        "WHEN TO USE: Calling any paid API endpoint. This is the default tool for " +
+        "accessing pay-enabled services. Use pay_discover first if you don't have a URL.\n\n" +
+        "SETTLEMENT: 'direct' = one-shot USDC transfer per request. " +
+        "'tab' = charges against a pre-funded tab (auto-opened if none exists).\n\n" +
+        "PRICE CONTEXT: Typical API calls $0.001-$1.00. Weather/data APIs: $0.01-$0.10. " +
+        "LLM inference: $0.01-$5.00. Image generation: $0.02-$2.00. " +
+        "Prices significantly above these ranges are flagged as suspicious.\n\n" +
+        "SAFETY: Only pays facilitators at pay-skill.com. Never blind-retries — " +
+        "if payment fails, the error is returned (double-pay is unrecoverable).",
       inputSchema: zodToMcpSchema(RequestArgs),
     },
     handler: async (args) => {
@@ -186,6 +190,9 @@ async function settleViaDirect(
   }
 
   const usd = (req.amount / 1_000_000).toFixed(4);
+  const priceWarning = req.amount > PRICE_WARN_THRESHOLD
+    ? ` WARNING: $${usd} per request is above typical API pricing ($0.001-$1.00). Verify this is expected.`
+    : "";
   return {
     status: retryResp.status,
     body: responseBody,
@@ -194,7 +201,7 @@ async function settleViaDirect(
       amount: req.amount,
       amount_usd: `$${usd}`,
       to: req.to,
-      context: `${url} charges $${usd} per request. For comparison: typical API calls cost $0.001-$1.00.`,
+      context: `Paid $${usd} via direct settlement.${priceWarning}`,
     },
   };
 }
@@ -264,6 +271,9 @@ async function settleViaTab(
   }
 
   const usd = (req.amount / 1_000_000).toFixed(4);
+  const priceWarning = req.amount > PRICE_WARN_THRESHOLD
+    ? ` WARNING: $${usd} per request is above typical API pricing. Verify this is expected.`
+    : "";
   return {
     status: retryResp.status,
     body: responseBody,
@@ -276,8 +286,8 @@ async function settleViaTab(
       auto_opened: autoOpened,
       context: autoOpened
         ? `Auto-opened tab ${tab.id} with $${(Math.max(req.amount * TAB_MULTIPLIER, TAB_MIN) / 1_000_000).toFixed(2)} ` +
-          `for ${req.to}. Charged $${usd} for this request.`
-        : `Charged $${usd} against existing tab ${tab.id}.`,
+          `for ${req.to}. Charged $${usd}.${priceWarning}`
+        : `Charged $${usd} against tab ${tab.id}.${priceWarning}`,
     },
   };
 }

@@ -16,12 +16,13 @@ export function createFundTool(api: PayAPI): Tool {
     definition: {
       name: "pay_fund",
       description:
-        "Generate a one-time link to deposit USDC into your wallet. " +
-        "Share this link with a human operator or open it in a browser to fund " +
-        "the wallet via Coinbase Onramp or direct USDC transfer. " +
-        "The link expires in 1 hour.\n\n" +
-        "After generating: poll pay_status every 30 seconds to detect when " +
-        "funds arrive. Typical onramp takes 1-5 minutes.",
+        "Generate a funding link to deposit USDC into your wallet.\n\n" +
+        "WHEN TO USE: Balance too low for payments. pay_status shows insufficient funds.\n\n" +
+        "FLOW: Generate link -> share with operator (or open in browser) -> " +
+        "operator deposits via Coinbase Onramp or direct USDC transfer -> " +
+        "poll pay_status every 30s to confirm arrival.\n\n" +
+        "Link expires in 1 hour. Single-use. Typical deposit: 1-5 minutes (onramp) " +
+        "or <30 seconds (direct USDC transfer on Base).",
       inputSchema: zodToMcpSchema(FundArgs),
     },
     handler: async () => {
@@ -42,9 +43,10 @@ export function createWithdrawTool(api: PayAPI): Tool {
     definition: {
       name: "pay_withdraw",
       description:
-        "Generate a one-time link to withdraw USDC from your wallet. " +
-        "Share this link with a human operator or open it in a browser. " +
-        "The link expires in 1 hour.",
+        "Generate a withdrawal link to pull USDC out of your wallet.\n\n" +
+        "WHEN TO USE: Moving funds out of the agent wallet. Share the link with " +
+        "a human operator to complete the withdrawal in a browser.\n\n" +
+        "Link expires in 1 hour. Single-use.",
       inputSchema: zodToMcpSchema(WithdrawArgs),
     },
     handler: async () => {
