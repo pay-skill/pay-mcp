@@ -64,3 +64,29 @@ export const DiscoverArgs = z.object({
   category: z.string().optional().describe("Filter by category"),
   settlement: z.enum(["direct", "tab"]).optional().describe("Filter by settlement mode"),
 });
+
+// ── Fund / Withdraw ───────────────────────────────────────────────
+
+export const FundArgs = z.object({});
+
+export const WithdrawArgs = z.object({});
+
+// ── Webhooks ──────────────────────────────────────────────────────
+
+export const WebhookRegisterArgs = z.object({
+  url: z.string().url().describe("HTTPS URL to receive webhook events"),
+  events: z.array(z.string()).optional().describe("Event types to subscribe to (default: all)"),
+  secret: z.string().optional().describe("HMAC secret for signature verification (auto-generated if omitted)"),
+});
+
+export const WebhookListArgs = z.object({});
+
+export const WebhookDeleteArgs = z.object({
+  id: z.string().describe("Webhook registration ID to delete"),
+});
+
+// ── Mint ──────────────────────────────────────────────────────────
+
+export const MintArgs = z.object({
+  amount: z.number().positive("Amount must be positive").describe("Amount in whole dollars (e.g. 100 = $100.00 USDC). Testnet only."),
+});

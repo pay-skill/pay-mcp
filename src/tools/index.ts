@@ -10,6 +10,9 @@ import { createSendTool } from "./send.js";
 import { createTabTools } from "./tabs.js";
 import { createRequestTool } from "./request.js";
 import { createDiscoverTool } from "./discover.js";
+import { createFundTool, createWithdrawTool } from "./fund.js";
+import { createWebhookTools } from "./webhooks.js";
+import { createMintTool } from "./mint.js";
 
 export interface ToolDefinition {
   name: string;
@@ -34,6 +37,10 @@ export function buildTools(api: PayAPI, privateKey: Hex): Tool[] {
     ...createTabTools(api, privateKey),
     createRequestTool(api, privateKey),
     createDiscoverTool(api),
+    createFundTool(api),
+    createWithdrawTool(api),
+    ...createWebhookTools(api),
+    createMintTool(api),
   ];
 }
 

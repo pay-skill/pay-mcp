@@ -6,6 +6,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
@@ -15,6 +16,12 @@ import {
 import type { PayAPI } from "./api.js";
 import type { Hex } from "viem";
 import { buildTools, buildToolRegistry, callTool } from "./tools/index.js";
+import {
+  listResources,
+  listResourceTemplates,
+  readResource,
+} from "./resources/index.js";
+import { listPrompts, getPrompt } from "./prompts/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -55,23 +62,39 @@ export function createServer(api: PayAPI, privateKey: Hex): Server {
   // ─── Resources ──────────────────────────────────────────────────────────────
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: [],
+    resources: listResources(),
+  }));
+
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+    resourceTemplates: listResourceTemplates(),
   }));
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const { uri } = request.params;
-    throw new McpError(ErrorCode.InvalidRequest, `Unknown resource: ${uri}`);
+    try {
+      const result = await readResource(uri, api);
+      return { contents: [{ uri, ...result }] };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new McpError(ErrorCode.InvalidRequest, message);
+    }
   });
 
   // ─── Prompts ────────────────────────────────────────────────────────────────
 
   server.setRequestHandler(ListPromptsRequestSchema, async () => ({
-    prompts: [],
+    prompts: listPrompts(),
   }));
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-    const { name } = request.params;
-    throw new McpError(ErrorCode.InvalidRequest, `Unknown prompt: ${name}`);
+    const { name, arguments: args = {} } = request.params;
+    try {
+      const messages = getPrompt(name, args);
+      return { messages };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new McpError(ErrorCode.InvalidRequest, message);
+    }
   });
 
   return server;
