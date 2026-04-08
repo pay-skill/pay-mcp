@@ -109,18 +109,12 @@ export function createRequestTool(api: PayAPI, privateKey: Hex): Tool {
 }
 
 async function parse402Requirements(resp: Response): Promise<PaymentRequirements> {
-  // V2: PAYMENT-REQUIRED header (base64 JSON)
+  // Try PAYMENT-REQUIRED header (base64 JSON)
   const prHeader = resp.headers.get("payment-required");
   if (prHeader) {
     try {
       const decoded = JSON.parse(atob(prHeader)) as Record<string, unknown>;
-      return {
-        settlement: String(decoded.settlement ?? "direct"),
-        amount: Number(decoded.amount ?? 0),
-        to: String(decoded.to ?? ""),
-        facilitator_url: decoded.facilitator_url ? String(decoded.facilitator_url) : undefined,
-        network: decoded.network ? String(decoded.network) : undefined,
-      };
+      return parseRequirementsObject(decoded);
     } catch {
       // Fall through
     }
@@ -129,12 +123,31 @@ async function parse402Requirements(resp: Response): Promise<PaymentRequirements
   // Fallback: response body
   const body = await resp.json().catch(() => ({})) as Record<string, unknown>;
   const req = (body.requirements ?? body) as Record<string, unknown>;
+  return parseRequirementsObject(req);
+}
+
+function parseRequirementsObject(obj: Record<string, unknown>): PaymentRequirements {
+  // x402 v2 format: { accepts: [{ payTo, amount, extra: { settlement, facilitator } }] }
+  const accepts = obj.accepts as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(accepts) && accepts.length > 0) {
+    const offer = accepts[0];
+    const extra = (offer.extra ?? {}) as Record<string, unknown>;
+    return {
+      settlement: String(extra.settlement ?? "direct"),
+      amount: Number(offer.amount ?? 0),
+      to: String(offer.payTo ?? ""),
+      facilitator_url: extra.facilitator ? String(extra.facilitator) : undefined,
+      network: offer.network ? String(offer.network) : undefined,
+    };
+  }
+
+  // Legacy v1 format: { settlement, amount, to }
   return {
-    settlement: String(req.settlement ?? "direct"),
-    amount: Number(req.amount ?? 0),
-    to: String(req.to ?? ""),
-    facilitator_url: req.facilitator_url ? String(req.facilitator_url) : undefined,
-    network: req.network ? String(req.network) : undefined,
+    settlement: String(obj.settlement ?? "direct"),
+    amount: Number(obj.amount ?? 0),
+    to: String(obj.to ?? ""),
+    facilitator_url: obj.facilitator_url ? String(obj.facilitator_url) : undefined,
+    network: obj.network ? String(obj.network) : undefined,
   };
 }
 
