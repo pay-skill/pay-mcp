@@ -49,7 +49,7 @@ function createTabOpenTool(api: PayAPI, privateKey: Hex): Tool {
       const contracts = await api.getContracts();
       const prepare = await api.post<{ hash: string; nonce: string; deadline: number }>(
         "/permit/prepare",
-        { amount, spender: contracts.pay_tab },
+        { amount, spender: contracts.tab },
       );
       const permit = await signPermit(
         privateKey,
@@ -144,7 +144,7 @@ function createTabTopupTool(api: PayAPI, privateKey: Hex): Tool {
       const contracts = await api.getContracts();
       const prepare = await api.post<{ hash: string; nonce: string; deadline: number }>(
         "/permit/prepare",
-        { amount, spender: contracts.pay_tab },
+        { amount, spender: contracts.tab },
       );
       const permit = await signPermit(
         privateKey,

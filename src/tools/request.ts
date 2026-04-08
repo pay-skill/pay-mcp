@@ -226,7 +226,7 @@ async function settleViaTab(
     const contracts = await api.getContracts();
     const prepare = await api.post<{ hash: string; nonce: string; deadline: number }>(
       "/permit/prepare",
-      { amount: tabAmount, spender: contracts.pay_tab },
+      { amount: tabAmount, spender: contracts.tab },
     );
     const permit = await signPermit(privateKey, prepare.hash as Hex, prepare.nonce, prepare.deadline);
 

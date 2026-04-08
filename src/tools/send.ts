@@ -42,7 +42,7 @@ export function createSendTool(api: PayAPI, privateKey: Hex): Tool {
       const contracts = await api.getContracts();
       const prepare = await api.post<{ hash: string; nonce: string; deadline: number }>(
         "/permit/prepare",
-        { amount, spender: contracts.pay_direct },
+        { amount, spender: contracts.direct },
       );
       const permit = await signPermit(
         privateKey,

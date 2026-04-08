@@ -63,9 +63,9 @@ export interface PermitSignature {
 
 export interface ContractsResponse {
   router: string;
-  pay_tab: string;
-  pay_direct: string;
-  pay_fee: string;
+  tab: string;
+  tab_v2?: string;
+  direct: string;
   usdc: string;
   chain_id: number;
 }

@@ -113,7 +113,9 @@ export class PayAPI {
 
   private async doRequest(method: string, path: string, body?: unknown): Promise<Response> {
     const authConfig = await this.getAuthConfig();
-    const headers = await buildAuthHeaders(this.privateKey, method, path, authConfig);
+    // Sign the full path the server sees (including /api/v1 prefix)
+    const url = new URL(`${this.apiUrl}${path}`);
+    const headers = await buildAuthHeaders(this.privateKey, method, url.pathname, authConfig);
 
     const fetchHeaders: Record<string, string> = {
       ...headers,
