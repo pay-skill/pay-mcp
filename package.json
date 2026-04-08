@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@types/keytar": "^4.4.2",
-    "@types/node": "^20.0.0",
+    "@types/node": "^25.5.2",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
