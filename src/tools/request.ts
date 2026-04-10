@@ -247,6 +247,16 @@ async function settleViaTab(
   if (!tab) {
     // Auto-open tab: 10x per-call price, minimum $5
     const tabAmount = Math.max(req.amount * TAB_MULTIPLIER, TAB_MIN);
+
+    // Pre-flight balance check before auto-opening tab
+    const status = await api.get<{ balance_usdc: string | null }>("/status");
+    const balanceMicro = Math.round(parseFloat(status.balance_usdc ?? "0") * 1_000_000);
+    if (balanceMicro < tabAmount) {
+      const have = (balanceMicro / 1_000_000).toFixed(2);
+      const need = (tabAmount / 1_000_000).toFixed(2);
+      throw new Error(`insufficient balance: have $${have}, need $${need} to open tab`);
+    }
+
     const contracts = await api.getContracts();
     const prepare = await api.post<{ hash: string; nonce: string; deadline: number }>(
       "/permit/prepare",
