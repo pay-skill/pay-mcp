@@ -1,6 +1,6 @@
 # @pay-skill/mcp
 
-MCP server for [Pay](https://pay-skill.com) — USDC payments for AI agents on Base.
+MCP server for [Pay](https://pay-skill.com) -- the complete x402 payment stack for AI agents. USDC on Base.
 
 Gives any MCP-compatible client (Claude Desktop, Cursor, VS Code, custom frameworks) the full power of Pay: direct payments, tabs, x402 paywalls, service discovery, and wallet management. No CLI binary needed.
 
@@ -144,3 +144,14 @@ npm run test:acceptance     # testnet (requires PAYSKILL_SIGNER_KEY)
 ## License
 
 MIT
+
+## Part of Pay
+
+Pay is the complete x402 payment stack -- gateway, facilitator, SDKs, CLI, and MCP server -- that lets AI agents pay for APIs with USDC on Base.
+
+- [Documentation](https://pay-skill.com/docs/)
+- [Architecture](https://pay-skill.com/docs/architecture)
+- [SDK](https://github.com/pay-skill/pay-sdk) -- Python + TypeScript
+- [CLI](https://github.com/pay-skill/pay-cli) -- Command-line tool
+- [pay-gate](https://github.com/pay-skill/gate) -- x402 payment gateway
+- [Protocol](https://github.com/pay-skill/pay-protocol) -- Smart contracts
