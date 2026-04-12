@@ -7,8 +7,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Wallet } from "@pay-skill/sdk";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REFERENCES_DIR = join(__dirname, "..", "..", "skills", "pay", "references");
+function getReferencesDir(): string {
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    return join(dir, "..", "..", "skills", "pay", "references");
+  } catch {
+    return "";
+  }
+}
+const REFERENCES_DIR = getReferencesDir();
 
 export interface ResourceDefinition {
   uri: string;
@@ -181,6 +188,7 @@ export async function readResource(
       break;
     }
     case "reference": {
+      if (!REFERENCES_DIR) throw new Error("Reference files not available in this environment");
       const filePath = join(REFERENCES_DIR, `${parsed.name}.md`);
       const text = await readFile(filePath, "utf-8");
       return { mimeType: "text/markdown", text };

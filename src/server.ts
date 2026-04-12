@@ -22,12 +22,32 @@ import {
 } from "./resources/index.js";
 import { listPrompts, getPrompt } from "./prompts/index.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(
-  readFileSync(resolve(__dirname, "..", "package.json"), "utf-8"),
-) as { version: string };
+function getVersion(): string {
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const raw = readFileSync(resolve(dir, "..", "package.json"), "utf-8");
+    return (JSON.parse(raw) as { version: string }).version;
+  } catch {
+    return "0.0.0";
+  }
+}
 
-const SERVER_INFO = { name: "@pay-skill/mcp", version: pkg.version };
+const SERVER_INFO = { name: "@pay-skill/mcp", version: getVersion() };
+
+/**
+ * Sandbox server for Smithery capability scanning.
+ * Returns a fully-configured server with a mock wallet so Smithery can
+ * enumerate tools/resources/prompts without real credentials.
+ */
+export function createSandboxServer(): Server {
+  const mock = new Proxy({} as Wallet, {
+    get: (_target, prop) => {
+      if (prop === "address") return "0x0000000000000000000000000000000000000000";
+      return () => Promise.reject(new Error("Sandbox mode"));
+    },
+  });
+  return createServer(mock);
+}
 
 /**
  * Create and configure the MCP server with all tools, resources, and prompts.

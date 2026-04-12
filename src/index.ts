@@ -20,6 +20,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { Wallet } from "@pay-skill/sdk";
 import { createServer } from "./server.js";
 
+export { createSandboxServer } from "./server.js";
+
 function isTestnet(): boolean {
   return process.env.PAY_NETWORK?.toLowerCase() === "testnet";
 }
