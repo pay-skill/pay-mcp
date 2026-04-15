@@ -13,7 +13,10 @@ import { listResources, listResourceTemplates, readResource } from "../src/resou
 import { listPrompts, getPrompt } from "../src/prompts/index.js";
 import { createTestWallet, ensureTestBalance, isMintRateLimitError } from "./setup.js";
 
-const { wallet, address } = createTestWallet();
+const { wallet, address: addressRaw } = createTestWallet();
+// Server returns addresses lowercased; viem's privateKeyToAccount returns
+// EIP-55 checksum case. Normalize to lowercase for assertion comparisons.
+const address = addressRaw.toLowerCase();
 const tools = buildTools(wallet);
 const registry = buildToolRegistry(tools);
 
