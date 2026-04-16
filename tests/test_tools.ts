@@ -216,6 +216,101 @@ describe("pay_mint", () => {
   });
 });
 
+describe("pay_request", () => {
+  it("returns JSON body when content-type is application/json", async () => {
+    const wallet = createMockWallet();
+    (wallet as Record<string, unknown>).request = async () =>
+      new Response(JSON.stringify({ weather: "sunny", temp: 72 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const registry = buildToolRegistry(buildTools(wallet));
+    const result = (await callTool("pay_request", {
+      url: "https://api.example.com/weather",
+    }, registry)) as Record<string, unknown>;
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body, { weather: "sunny", temp: 72 });
+  });
+
+  it("returns text body when content-type is not json", async () => {
+    const wallet = createMockWallet();
+    (wallet as Record<string, unknown>).request = async () =>
+      new Response("Hello, world!", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      });
+    const registry = buildToolRegistry(buildTools(wallet));
+    const result = (await callTool("pay_request", {
+      url: "https://example.com/hello",
+    }, registry)) as Record<string, unknown>;
+    assert.equal(result.status, 200);
+    assert.equal(result.body, "Hello, world!");
+  });
+
+  it("passes method, headers, and parsed body to wallet.request", async () => {
+    let capturedUrl: string | undefined;
+    let capturedOpts: Record<string, unknown> | undefined;
+    const wallet = createMockWallet();
+    (wallet as Record<string, unknown>).request = async (url: string, opts: Record<string, unknown>) => {
+      capturedUrl = url;
+      capturedOpts = opts;
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const registry = buildToolRegistry(buildTools(wallet));
+    await callTool("pay_request", {
+      url: "https://api.example.com/data",
+      method: "POST",
+      headers: { "X-Custom": "value" },
+      body: '{"key":"val"}',
+    }, registry);
+    assert.equal(capturedUrl, "https://api.example.com/data");
+    assert.equal(capturedOpts?.method, "POST");
+    assert.deepEqual(capturedOpts?.headers, { "X-Custom": "value" });
+    assert.deepEqual(capturedOpts?.body, { key: "val" });
+  });
+
+  it("returns non-200 status without throwing", async () => {
+    const wallet = createMockWallet();
+    (wallet as Record<string, unknown>).request = async () =>
+      new Response(JSON.stringify({ error: "not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    const registry = buildToolRegistry(buildTools(wallet));
+    const result = (await callTool("pay_request", {
+      url: "https://api.example.com/missing",
+    }, registry)) as Record<string, unknown>;
+    assert.equal(result.status, 404);
+    assert.deepEqual(result.body, { error: "not found" });
+  });
+
+  it("omits body when not provided", async () => {
+    let capturedOpts: Record<string, unknown> | undefined;
+    const wallet = createMockWallet();
+    (wallet as Record<string, unknown>).request = async (_url: string, opts: Record<string, unknown>) => {
+      capturedOpts = opts;
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const registry = buildToolRegistry(buildTools(wallet));
+    await callTool("pay_request", {
+      url: "https://api.example.com/data",
+    }, registry);
+    assert.equal(capturedOpts?.body, undefined);
+  });
+
+  it("falls back to text when no content-type header", async () => {
+    const wallet = createMockWallet();
+    (wallet as Record<string, unknown>).request = async () =>
+      new Response("raw response", { status: 200, headers: {} });
+    const registry = buildToolRegistry(buildTools(wallet));
+    const result = (await callTool("pay_request", {
+      url: "https://example.com/raw",
+    }, registry)) as Record<string, unknown>;
+    assert.equal(result.status, 200);
+    assert.equal(result.body, "raw response");
+  });
+});
+
 describe("tool descriptions include SKILL.md context", () => {
   it("pay_send mentions confirmation thresholds", () => {
     const { tools } = setup();

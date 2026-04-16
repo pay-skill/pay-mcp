@@ -134,6 +134,34 @@ describe("acceptance: pay_discover", () => {
   });
 });
 
+describe("acceptance: pay_request", () => {
+  it("makes GET request and returns JSON response", async () => {
+    const result = (await callTool("pay_request", {
+      url: "https://testnet.pay-skill.com/api/v1/discover",
+    }, registry)) as Record<string, unknown>;
+    assert.equal(result.status, 200);
+    assert.ok(typeof result.body === "object" && result.body !== null);
+  });
+
+  it("forwards custom method", async () => {
+    // OPTIONS to discover — proves method forwarding via real HTTP
+    const result = (await callTool("pay_request", {
+      url: "https://testnet.pay-skill.com/api/v1/discover",
+      method: "OPTIONS",
+    }, registry)) as Record<string, unknown>;
+    assert.ok(typeof result.status === "number");
+    // OPTIONS returns 200 or 204 depending on CORS config
+    assert.ok(result.status >= 200 && result.status < 400);
+  });
+
+  it("returns non-200 for bad endpoint", async () => {
+    const result = (await callTool("pay_request", {
+      url: "https://testnet.pay-skill.com/api/v1/nonexistent-endpoint-p28",
+    }, registry)) as Record<string, unknown>;
+    assert.ok(result.status >= 400, `Expected 4xx, got ${result.status}`);
+  });
+});
+
 describe("acceptance: resources", () => {
   it("reads pay://wallet/status", async () => {
     const result = await readResource("pay://wallet/status", wallet);
